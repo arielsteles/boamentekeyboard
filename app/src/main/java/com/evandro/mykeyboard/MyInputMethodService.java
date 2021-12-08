@@ -1,14 +1,14 @@
 package com.evandro.mykeyboard;
 
-import static java.util.EnumSet.range;
-
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
-import android.content.Intent;
+
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.KeyboardView;
 import android.inputmethodservice.Keyboard;
 
-import android.os.Bundle;
+import android.os.Build;
 import android.os.Vibrator;
 import android.util.Log;
 import android.view.inputmethod.InputConnection;
@@ -16,26 +16,76 @@ import android.view.View;
 import android.view.KeyEvent;
 import android.media.AudioManager;
 
-import java.util.ArrayList;
+import androidx.annotation.RequiresApi;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+
+import java.util.UUID;
 
 public class MyInputMethodService extends InputMethodService implements KeyboardView.OnKeyboardActionListener {
 
     private KeyboardView kv;
     private Keyboard keyboard;
     private boolean caps = false;
-    private String texto, frase = "";
+    private String texto, frase, uuid = "";
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public View onCreateInputView() {
         kv = (KeyboardView) getLayoutInflater().inflate(R.layout.keyboard_view, null);
         keyboard = new Keyboard(this, R.xml.qwerty);
         kv.setKeyboard(keyboard);
         kv.setOnKeyboardActionListener(this);
+
+        //uuid = getUUUID();
+
+        //Toast.makeText (this, UUID.randomUUID().toString(), Toast.LENGTH_LONG).show();
+
         return kv;
+    }
+
+    /*
+    public String getUUUID() {
+        Arquivo arquivo;
+        String uuid;
+        if (uuid definido em arquivo){
+            uuid = getUUIDdoArquivo;
+        } else {
+            uuid = UUID.randomUUID().toString();
+            salvarNoArquivo(uuid);
+        }
+        return uuid;
+    }*/
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "mhealth";
+            String description = "mhealth-desc";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel("mhealth", name, importance);
+            channel.setDescription(description);
+
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    private void louchNotification() {
+        createNotificationChannel();
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "mhealth")
+                .setSmallIcon(R.drawable.ic_baseline_notifications_24)
+                .setContentTitle("My notification")
+                .setContentText("Esse é o seu identificador no sistema BoaMente: "+UUID.randomUUID().toString())
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(getApplicationContext());
+        notificationManager.notify(1, builder.build());
+        Log.i("mhealth", "chamou a notificação");
     }
 
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
+        //Intent intent = new Intent(this, Tela.class);
+        //startActivity(intent);
         InputConnection ic = getCurrentInputConnection();
         playSound(primaryCode);
         onPress(primaryCode);
@@ -51,6 +101,7 @@ public class MyInputMethodService extends InputMethodService implements Keyboard
                 kv.invalidateAllKeys();
                 break;
             case Keyboard.KEYCODE_DONE:
+                louchNotification();
                 ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
                 break;
             default:
@@ -72,13 +123,15 @@ public class MyInputMethodService extends InputMethodService implements Keyboard
 
     @Override
     public void onFinishInput() {
-        String[] textoSeparado = frase.split("\\s");
-        if (textoSeparado.length > 2) {
-            SegundoPlano segundoPlano = new SegundoPlano(frase);
-            segundoPlano.execute();
-            frase = "";
-        } else {
-            frase = "";
+        if (!frase.isEmpty()) {
+            String[] textoSeparado = frase.split("\\s");
+            if (textoSeparado.length > 2) {
+                SegundoPlano segundoPlano = new SegundoPlano(frase, uuid);
+                segundoPlano.execute();
+                frase = "";
+            } else {
+                frase = "";
+            }
         }
     }
 

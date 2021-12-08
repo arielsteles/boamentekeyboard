@@ -19,9 +19,11 @@ import okhttp3.Response;
 
 public class SegundoPlano extends AsyncTask<Void, Void, Void> {
     private final String texto;
+    private final String email;
 
-    public SegundoPlano(String texto) {
+    public SegundoPlano(String texto, String email) {
         this.texto = texto;
+        this.email = email;
     }
 
     @Override
